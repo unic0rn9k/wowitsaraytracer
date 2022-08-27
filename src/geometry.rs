@@ -16,7 +16,7 @@ impl Ray {
         {
             return vec3![
                 normal.dot(&vec3![0, 0, 0.5]),
-                normal.dot(&vec3![0, 0.2, 0.5]),
+                normal.dot(&vec3![0.1, 0.2, 0.5]),
                 normal.dot(&vec3![0, 0.3, 0.5]),
             ]
             .to_color();
