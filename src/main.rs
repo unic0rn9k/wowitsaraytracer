@@ -65,7 +65,7 @@ fn main() -> Result<()> {
     let mut buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
 
     let mut window = Window::new(
-        "Wow. It's a ray tracer!",
+        "Wow. It's a raytracer!",
         WIDTH,
         HEIGHT,
         WindowOptions::default(),
