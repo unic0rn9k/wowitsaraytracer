@@ -2,7 +2,7 @@
 //! based on https://raytracing.github.io/books/RayTracingInOneWeekend.html
 //!
 //! ## Screenshots
-//! ![](/screenshot.jepg)
+//! ![](https://raw.githubusercontent.com/unic0rn9k/wowitsaraytracer/master/screenshot.jpeg)
 
 use anyhow::*;
 use geometry::{Geometry, Intersection, Ray};
