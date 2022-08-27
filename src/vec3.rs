@@ -130,3 +130,13 @@ impl_assign_op!(+= AddAssign add_assign);
 impl_assign_op!(-= SubAssign sub_assign);
 impl_assign_op!(/= DivAssign div_assign);
 impl_assign_op!(*= MulAssign mul_assign);
+
+#[macro_export]
+macro_rules! vec3 {
+    ($x: expr, $y: expr, $z: expr $(,)?) => {
+        Vec3::from_array([($x) as f32, ($y) as f32, ($z) as f32])
+    };
+    ($fill: expr) => {
+        Vec3::from_array([($fill) as f32; 3])
+    };
+}

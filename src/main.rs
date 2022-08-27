@@ -2,6 +2,7 @@
 //! based on https://raytracing.github.io/books/RayTracingInOneWeekend.html
 
 use anyhow::*;
+use geometry::{Geometry, Intersection, Ray};
 use minifb::{self, Key, Window, WindowOptions};
 
 const ASPECT_RATION: f32 = 16. / 19.;
@@ -12,52 +13,48 @@ const HEIGHT: usize = (WIDTH as f32 / ASPECT_RATION) as usize;
 mod vec3;
 use vec3::Vec3;
 
-macro_rules! vec3 {
-    ($x: expr, $y: expr, $z: expr $(,)?) => {
-        Vec3::from_array([($x) as f32, ($y) as f32, ($z) as f32])
-    };
-    ($fill: expr) => {
-        Vec3::from_array([($fill) as f32; 3])
-    };
+mod geometry;
+
+struct Sphere {
+    center: Vec3,
+    radius: f32,
 }
 
-struct Ray {
-    origin: Vec3,
-    direction: Vec3,
+impl Sphere {
+    pub fn new(center: Vec3, radius: f32) -> Self {
+        Self { center, radius }
+    }
 }
 
-impl Ray {
-    fn at(&self, t: f32) -> Vec3 {
-        self.origin + self.direction * t
-    }
+impl Geometry for Sphere {
+    fn intersects(&self, ray: &Ray, t_min: f32, t_max: f32) -> Option<Intersection> {
+        let oc = ray.origin - self.center;
+        let a = ray.direction.length_square();
 
-    fn background_color(&self) -> u32 {
-        let t = self.intersects_sphere(vec3![0, 0, -1], 0.5);
-        if t > 0. {
-            return (0.5 * ((self.at(t) - vec3![0, 0, -1]).unit_vector() + 1.)).to_color();
-        }
-        let t = 0.5 * (self.direction.unit_vector().y + 1.);
-        (vec3![1] * (1. - t) + vec3![0.5, 0.7, 1] * t).to_color()
-    }
+        let half_b = ray.direction.dot(&oc);
+        let c = oc.length_square() - self.radius.powi(2);
 
-    fn new(origin: Vec3, direction: Vec3) -> Self {
-        Self { origin, direction }
-    }
-
-    fn intersects_sphere(&self, center: Vec3, radious: f32) -> f32 {
-        let oc = self.origin - center;
-        let a = self.direction.length_square();
-
-        let b = 2. * self.direction.dot(&oc);
-        let c = oc.length_square() - radious.powi(2);
-
-        let discriminant = b * b - 4. * a * c;
+        let discriminant = half_b * half_b - a * c;
 
         if discriminant < 0. {
-            0.
-        } else {
-            (-b - discriminant.sqrt()) / (2. * a)
+            return None;
         }
+
+        let sqrtd = discriminant.sqrt();
+        let mut t = (-half_b - sqrtd) / a;
+        if t < t_min || t_max < t {
+            t = (-half_b + sqrtd) / a;
+            if t < t_min || t_max < t {
+                return None;
+            }
+        }
+
+        let point = ray.at(t);
+        Some(Intersection {
+            point,
+            t,
+            normal: (point - self.center) / self.radius,
+        })
     }
 }
 
