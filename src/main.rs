@@ -54,6 +54,7 @@ impl Geometry for Sphere {
             point,
             t,
             normal: (point - self.center) / self.radius,
+            is_front_facing: true,
         })
     }
 }

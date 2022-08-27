@@ -14,7 +14,12 @@ impl Ray {
         if let Some(Intersection { normal, .. }) =
             Sphere::new(vec3![0, 0, -1], 0.5).intersects(self, 0., 1.)
         {
-            return (normal).to_color();
+            return vec3![
+                normal.dot(&vec3![0, 0, 0.5]),
+                normal.dot(&vec3![0, 0.2, 0.5]),
+                normal.dot(&vec3![0, 0.3, 0.5]),
+            ]
+            .to_color();
         }
         let t = 0.5 * (self.direction.unit_vector().y + 1.);
         (vec3![1] * (1. - t) + vec3![0.5, 0.7, 1] * t).to_color()
@@ -30,6 +35,7 @@ pub struct Intersection {
     pub point: Vec3,
     pub normal: Vec3,
     pub t: f32,
+    pub is_front_facing: bool,
 }
 
 pub trait Geometry {
