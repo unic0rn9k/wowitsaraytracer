@@ -2,4 +2,4 @@
 based on https://raytracing.github.io/books/RayTracingInOneWeekend.html
 
 ### Screenshots
-![](./screenshot.jpg)
+![](screenshot.jpg)
