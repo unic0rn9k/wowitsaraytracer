@@ -1,4 +1,4 @@
-//! # A Gay and proud ray tracer, written in rust.
+//! # a Wish Raytracer
 //! based on https://raytracing.github.io/books/RayTracingInOneWeekend.html
 //!
 //! ## Screenshots
@@ -10,7 +10,7 @@ use minifb::{self, Key, Window, WindowOptions};
 
 const ASPECT_RATION: f32 = 16. / 19.;
 
-const WIDTH: usize = 400;
+const WIDTH: usize = 800;
 const HEIGHT: usize = (WIDTH as f32 / ASPECT_RATION) as usize;
 
 mod vec3;
@@ -70,11 +70,12 @@ impl RaymarchedGeometry for Sphere {
     }
 }
 
-struct MandelBulb;
+#[derive(Clone, Copy)]
+struct MandelBulb(f32);
 
 impl RaymarchedGeometry for MandelBulb {
     fn distance(&self, point: Vec3) -> f32 {
-        const POWER: i32 = 10;
+        let power = self.0;
         let mut z = point;
         let mut dr = 1.;
         let mut r = 0.;
@@ -85,10 +86,10 @@ impl RaymarchedGeometry for MandelBulb {
             }
             let theta = (z.z / r).acos();
             let phi = (z.y / z.x).atan();
-            dr = r.powi(POWER - 1) * POWER as f32 * dr + 1.;
-            let zr = r.powi(POWER);
-            let theta = theta * POWER as f32;
-            let phi = phi * POWER as f32;
+            dr = r.powf(power - 1.) * power as f32 * dr + 1.;
+            let zr = r.powf(power);
+            let theta = theta * power as f32;
+            let phi = phi * power as f32;
             z = zr
                 * vec3![
                     theta.sin() * phi.cos(),
@@ -109,12 +110,7 @@ macro_rules! scene{
 }
 
 fn main() -> Result<()> {
-    let scene = scene![
-        Sphere::new(vec3![0, 1, -1], 0.5),
-        //FakeRaytrace(Sphere::new(vec3![0.2, 0.1, -0.8], 0.3)),
-        //Sphere::new(vec3![0.2, 0.1, -0.8], 0.3),
-        FakeRaytrace(MandelBulb)
-    ];
+    let mut bulb = FakeRaytrace(MandelBulb(-20.));
 
     let mut buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
 
@@ -131,9 +127,9 @@ fn main() -> Result<()> {
 
     let viewport_height = 2.;
     let viewport_width = viewport_height * ASPECT_RATION;
-    let focal_length = 3.;
+    let focal_length = 2.;
 
-    let origin = vec3![0, 0.5, 3];
+    let origin = vec3![0, 0.8, 3];
     let horizontal = vec3![viewport_width, 0, 0];
     let vertical = vec3![0, viewport_height, 0];
 
@@ -148,9 +144,11 @@ fn main() -> Result<()> {
                 let relative_dir = lower_left_corner + u * horizontal + v * vertical - origin;
                 let r = Ray::new(origin, relative_dir); //* (vec3![0] - origin));
 
-                buffer[x + y * WIDTH] = r.render(&scene);
+                buffer[x + y * WIDTH] = r.render(&scene![bulb]);
             }
         }
+        println!("Iteration");
+        bulb.0 .0 += 0.3;
 
         // We unwrap here as we want this code to exit if it fails. Real applications may want to handle this in a different way
         window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap();

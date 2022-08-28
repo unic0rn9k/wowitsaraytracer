@@ -1,4 +1,4 @@
-## A Gay and proud ray tracer, written in rust.
+## a Wish Raytracer
 based on https://raytracing.github.io/books/RayTracingInOneWeekend.html
 
 ### Screenshots
