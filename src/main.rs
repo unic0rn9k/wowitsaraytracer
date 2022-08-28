@@ -5,7 +5,7 @@
 //! ![](https://raw.githubusercontent.com/unic0rn9k/wowitsaraytracer/master/screenshot.jpeg)
 
 use anyhow::*;
-use geometry::{Geometry, Intersection, Ray};
+use geometry::{Intersection, Ray, RaymarchedGeometry, RaytracedGeometry};
 use minifb::{self, Key, Window, WindowOptions};
 
 const ASPECT_RATION: f32 = 16. / 19.;
@@ -16,6 +16,8 @@ const HEIGHT: usize = (WIDTH as f32 / ASPECT_RATION) as usize;
 mod vec3;
 use vec3::Vec3;
 
+use crate::geometry::FakeRaytrace;
+
 mod geometry;
 
 struct Sphere {
@@ -24,12 +26,12 @@ struct Sphere {
 }
 
 impl Sphere {
-    pub fn new(center: Vec3, radius: f32) -> Self {
+    pub const fn new(center: Vec3, radius: f32) -> Self {
         Self { center, radius }
     }
 }
 
-impl Geometry for Sphere {
+impl RaytracedGeometry for Sphere {
     fn intersects(&self, ray: &Ray, t_min: f32, t_max: f32) -> Option<Intersection> {
         let oc = ray.origin - self.center;
         let a = ray.direction.length_square();
@@ -62,7 +64,58 @@ impl Geometry for Sphere {
     }
 }
 
+impl RaymarchedGeometry for Sphere {
+    fn distance(&self, point: Vec3) -> f32 {
+        (self.center - point).length() - self.radius
+    }
+}
+
+struct MandelBulb;
+
+impl RaymarchedGeometry for MandelBulb {
+    fn distance(&self, point: Vec3) -> f32 {
+        const POWER: i32 = 10;
+        let mut z = point;
+        let mut dr = 1.;
+        let mut r = 0.;
+        for _ in 0..10 {
+            r = z.length();
+            if r > 2. {
+                break;
+            }
+            let theta = (z.z / r).acos();
+            let phi = (z.y / z.x).atan();
+            dr = r.powi(POWER - 1) * POWER as f32 * dr + 1.;
+            let zr = r.powi(POWER);
+            let theta = theta * POWER as f32;
+            let phi = phi * POWER as f32;
+            z = zr
+                * vec3![
+                    theta.sin() * phi.cos(),
+                    phi.sin() * theta.sin(),
+                    theta.cos()
+                ];
+            z += point;
+        }
+        0.5 * r.ln() * r / dr
+    }
+}
+
+macro_rules! scene{
+    ($($obj: expr),* $(,)?) => {{
+        let tmp: Vec<Box<dyn RaytracedGeometry>> = vec![$(Box::new($obj)),*];
+        tmp
+    }}
+}
+
 fn main() -> Result<()> {
+    let scene = scene![
+        Sphere::new(vec3![0, 1, -1], 0.5),
+        //FakeRaytrace(Sphere::new(vec3![0.2, 0.1, -0.8], 0.3)),
+        //Sphere::new(vec3![0.2, 0.1, -0.8], 0.3),
+        FakeRaytrace(MandelBulb)
+    ];
+
     let mut buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
 
     let mut window = Window::new(
@@ -78,9 +131,9 @@ fn main() -> Result<()> {
 
     let viewport_height = 2.;
     let viewport_width = viewport_height * ASPECT_RATION;
-    let focal_length = 1.;
+    let focal_length = 3.;
 
-    let origin = vec3![0];
+    let origin = vec3![0, 0.5, 3];
     let horizontal = vec3![viewport_width, 0, 0];
     let vertical = vec3![0, viewport_height, 0];
 
@@ -92,12 +145,10 @@ fn main() -> Result<()> {
                 let u = x as f32 / (WIDTH as f32 - 1.);
                 let v = (HEIGHT - y - 1) as f32 / (HEIGHT as f32 - 1.);
 
-                let r = Ray::new(
-                    origin,
-                    lower_left_corner + u * horizontal + v * vertical - origin,
-                );
+                let relative_dir = lower_left_corner + u * horizontal + v * vertical - origin;
+                let r = Ray::new(origin, relative_dir); //* (vec3![0] - origin));
 
-                buffer[x + y * WIDTH] = r.background_color();
+                buffer[x + y * WIDTH] = r.render(&scene);
             }
         }
 

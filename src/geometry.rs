@@ -10,15 +10,23 @@ impl Ray {
         self.origin + self.direction * t
     }
 
-    pub fn background_color(&self) -> u32 {
-        if let Some(Intersection { normal, .. }) =
-            Sphere::new(vec3![0, 0, -1], 0.5).intersects(self, 0., 1.)
-        {
-            return vec3![
-                normal.dot(&vec3![0, 0, 0.5]),
-                normal.dot(&vec3![0.1, 0.2, 0.5]),
-                normal.dot(&vec3![0, 0.3, 0.5]),
-            ]
+    pub fn render(&self, scene: &[Box<dyn RaytracedGeometry>]) -> u32 {
+        let mut min_normal = vec3![1];
+        let mut dist = std::f32::INFINITY;
+        let mut intersected_balls = 0;
+
+        for obj in scene.iter() {
+            if let Some(Intersection { normal, t, .. }) =
+                obj.intersects(self, 0., 2.) && t < dist
+            {
+                intersected_balls += 1;
+                dist=t;
+                min_normal = normal
+            }
+        }
+        if intersected_balls > 0 {
+            return (vec3![min_normal.dot(&vec3![0.2, 0.2, 0.2]), 0, 0]
+                + (dist.powi(2) * vec3![0.1, 0.2, 0.7]))
             .to_color();
         }
         let t = 0.5 * (self.direction.unit_vector().y + 1.);
@@ -38,6 +46,33 @@ pub struct Intersection {
     pub is_front_facing: bool,
 }
 
-pub trait Geometry {
+pub trait RaytracedGeometry {
     fn intersects(&self, ray: &Ray, t_min: f32, t_max: f32) -> Option<Intersection>;
+}
+
+pub trait RaymarchedGeometry {
+    fn distance(&self, point: Vec3) -> f32;
+}
+
+pub struct FakeRaytrace<T: RaymarchedGeometry>(pub T);
+
+impl<T: RaymarchedGeometry> RaytracedGeometry for FakeRaytrace<T> {
+    fn intersects(&self, ray: &Ray, t_min: f32, t_max: f32) -> Option<Intersection> {
+        let mut dist = std::f32::INFINITY;
+        let mut t = t_min;
+        while dist > 0.001 {
+            let d = self.0.distance(ray.at(t));
+            if d > dist || t > t_max {
+                return None;
+            }
+            dist = d;
+            t += 0.001;
+        }
+        Some(Intersection {
+            point: ray.at(t),
+            normal: vec3![0],
+            t,
+            is_front_facing: false,
+        })
+    }
 }

@@ -10,7 +10,7 @@ pub struct Vec3 {
 }
 
 impl Vec3 {
-    pub fn from_array(arr: [f32; 3]) -> Self {
+    pub const fn from_array(arr: [f32; 3]) -> Self {
         unsafe { transmute(arr) }
     }
 
