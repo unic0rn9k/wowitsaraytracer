@@ -5,9 +5,9 @@ fn spectral_response(n: f32, channel: f32, width: f32) -> f32 {
 }
 
 fn color_from_scaler(n: f32) -> Vec3 {
-    let r = spectral_response(n, 2., 3.);
-    let g = spectral_response(n, 1., 3.);
-    let b = spectral_response(n, 0., 2.);
+    let r = spectral_response(n, 0., 2.);
+    let g = spectral_response(n, 0.1, 3.) * 0.5;
+    let b = spectral_response(n, 0., 3.);
     vec3![r, g, 0]
 }
 
@@ -36,7 +36,9 @@ impl Ray {
             }
         }
         if intersected_objects > 0 {
-            color_from_scaler(dist) * min_normal + vec3![min_normal[0]] * vec3![0, 0, 2]
+            color_from_scaler(dist) * 0.2
+                + color_from_scaler(dist) * min_normal
+                + vec3![min_normal[0]] * vec3![0, 0, 2] * 0.4
         } else {
             vec3![0]
         }
@@ -70,13 +72,13 @@ impl<T: RaymarchedGeometry + Copy> RaytracedGeometry for FakeRaytrace<T> {
     fn intersects(&self, ray: &Ray, t_min: f32, t_max: f32) -> Option<Intersection> {
         let mut dist = t_max;
         let mut t = t_min;
-        let mut not_a_normal = 0.8;
-        let mut highlight = 0.5;
+        let mut not_a_normal = 0.5;
+        let mut highlight = 1.;
         while dist > 0.0005 {
             let d = self.0.distance(ray.at(t));
             if d > dist {
-                not_a_normal *= 0.7;
-                highlight *= 0.2;
+                not_a_normal *= 0.8;
+                highlight *= 0.1;
             }
             if t > t_max {
                 return None;
