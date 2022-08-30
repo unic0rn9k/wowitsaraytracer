@@ -10,9 +10,9 @@ use anyhow::*;
 use geometry::{Intersection, Ray, RaymarchedGeometry, RaytracedGeometry};
 use minifb::{self, Key, Window, WindowOptions};
 
-const ASPECT_RATION: f32 = 15. / 20.;
+const ASPECT_RATION: f32 = 1.;
 
-const WIDTH: usize = 1500;
+const WIDTH: usize = 1000;
 const HEIGHT: usize = (WIDTH as f32 / ASPECT_RATION) as usize;
 
 mod vec3;
@@ -128,11 +128,11 @@ fn main() -> Result<()> {
 
     let viewport_height = 2.;
     let viewport_width = viewport_height * ASPECT_RATION;
-    let focal_length = 2.2;
+    let focal_length = 2.;
 
-    let origin = vec3![0, 0.8, 3];
+    let origin = vec3![0, 0.5, 3];
     let horizontal = vec3![viewport_width, 0, 0];
-    let vertical = vec3![0, viewport_height, 0];
+    let vertical = vec3![0, viewport_height, -1];
 
     let lower_left_corner = origin - horizontal / 2. - vertical / 2. - vec3![0, 0, focal_length];
     let mut rng = thread_rng();
@@ -142,10 +142,10 @@ fn main() -> Result<()> {
         let mut img = image::RgbImage::new(WIDTH as u32, HEIGHT as u32);
         let mut buffer_u32 = vec![0; WIDTH * HEIGHT];
 
-        for _ in 0..600 {
-            for _ in 0..10000 {
-                let x = rng.gen_range(0..WIDTH);
-                let y = rng.gen_range(0..HEIGHT);
+        for x in 0..WIDTH {
+            for y in 0..HEIGHT {
+                //let x = rng.gen_range(0..WIDTH);
+                //let y = rng.gen_range(0..HEIGHT);
 
                 if buffer_u32[x + y * WIDTH] != 0 {
                     continue;
@@ -170,7 +170,7 @@ fn main() -> Result<()> {
                 .unwrap();
         }
         img.save(&format!("images/image_{image_nr}.png"))?;
-        bulb.0 .0 += 4.;
+        bulb.0 .0 += 2.;
         image_nr += 1;
     }
 
