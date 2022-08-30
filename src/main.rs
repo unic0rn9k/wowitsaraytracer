@@ -4,7 +4,7 @@
 //! ## Screenshots
 //! ![](https://raw.githubusercontent.com/unic0rn9k/wowitsaraytracer/master/screenshot.jpeg)
 //! ![](https://raw.githubusercontent.com/unic0rn9k/wowitsaraytracer/master/mandelbulb.jpeg)
-//! ![](https://raw.githubusercontent.com/unic0rn9k/wowitsaraytracer/master/images/image_8.jpeg)
+//! ![](https://raw.githubusercontent.com/unic0rn9k/wowitsaraytracer/master/images/image_8.png)
 
 use anyhow::*;
 use geometry::{Intersection, Ray, RaymarchedGeometry, RaytracedGeometry};
