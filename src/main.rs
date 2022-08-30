@@ -4,14 +4,15 @@
 //! ## Screenshots
 //! ![](https://raw.githubusercontent.com/unic0rn9k/wowitsaraytracer/master/screenshot.jpeg)
 //! ![](https://raw.githubusercontent.com/unic0rn9k/wowitsaraytracer/master/mandelbulb.jpeg)
+//! ![](https://raw.githubusercontent.com/unic0rn9k/wowitsaraytracer/master/images/image_8.jpeg)
 
 use anyhow::*;
 use geometry::{Intersection, Ray, RaymarchedGeometry, RaytracedGeometry};
 use minifb::{self, Key, Window, WindowOptions};
 
-const ASPECT_RATION: f32 = 16. / 19.;
+const ASPECT_RATION: f32 = 15. / 20.;
 
-const WIDTH: usize = 1000;
+const WIDTH: usize = 1500;
 const HEIGHT: usize = (WIDTH as f32 / ASPECT_RATION) as usize;
 
 mod vec3;
@@ -112,9 +113,7 @@ macro_rules! scene{
 }
 
 fn main() -> Result<()> {
-    let mut bulb = FakeRaytrace(MandelBulb(8.));
-
-    let mut buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
+    let mut bulb = FakeRaytrace(MandelBulb(-20.));
 
     let mut window = Window::new(
         "Wow. It's a raytracer!",
@@ -129,7 +128,7 @@ fn main() -> Result<()> {
 
     let viewport_height = 2.;
     let viewport_width = viewport_height * ASPECT_RATION;
-    let focal_length = 2.;
+    let focal_length = 2.2;
 
     let origin = vec3![0, 0.8, 3];
     let horizontal = vec3![viewport_width, 0, 0];
@@ -137,12 +136,20 @@ fn main() -> Result<()> {
 
     let lower_left_corner = origin - horizontal / 2. - vertical / 2. - vec3![0, 0, focal_length];
     let mut rng = thread_rng();
+    let mut image_nr = 0;
 
     while window.is_open() && !window.is_key_down(Key::Q) {
-        for _ in 0..40 {
-            for _ in 0..100000 {
+        let mut img = image::RgbImage::new(WIDTH as u32, HEIGHT as u32);
+        let mut buffer_u32 = vec![0; WIDTH * HEIGHT];
+
+        for _ in 0..600 {
+            for _ in 0..10000 {
                 let x = rng.gen_range(0..WIDTH);
                 let y = rng.gen_range(0..HEIGHT);
+
+                if buffer_u32[x + y * WIDTH] != 0 {
+                    continue;
+                };
 
                 let u = x as f32 / (WIDTH as f32 - 1.);
                 let v = (HEIGHT - y - 1) as f32 / (HEIGHT as f32 - 1.);
@@ -150,11 +157,21 @@ fn main() -> Result<()> {
                 let relative_dir = lower_left_corner + u * horizontal + v * vertical - origin;
                 let r = Ray::new(origin, relative_dir); //* (vec3![0] - origin));
 
-                buffer[x + y * WIDTH] = r.render(&scene![bulb]);
+                let pixel = r.render(&scene![bulb]);
+                buffer_u32[x + y * WIDTH] = pixel.to_color();
+                let mut tmp = [0; 3];
+                for n in 0..3 {
+                    tmp[n] = (pixel[n] * 255.) as u8
+                }
+                img.put_pixel(x as u32, y as u32, image::Rgb(tmp));
             }
-            window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap();
+            window
+                .update_with_buffer(&buffer_u32, WIDTH, HEIGHT)
+                .unwrap();
         }
-        bulb.0 .0 += 0.3;
+        img.save(&format!("images/image_{image_nr}.png"))?;
+        bulb.0 .0 += 4.;
+        image_nr += 1;
     }
 
     Ok(())

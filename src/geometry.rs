@@ -5,11 +5,10 @@ fn spectral_response(n: f32, channel: f32, width: f32) -> f32 {
 }
 
 fn color_from_scaler(n: f32) -> Vec3 {
-    let r = spectral_response(n, 1.5, 1.);
-    let g = spectral_response(n, 1.5, 1.5) * 0.25;
-    let b = spectral_response(n, 2., 2.) * 0.25;
-    //vec3![n.tanh() * 0.5, (n / 2.).tanh(), (n / 3.).tanh()] // * 0.1 + vec3![n]).unit_vector()
-    vec3![n]
+    let r = spectral_response(n, 2., 3.);
+    let g = spectral_response(n, 1., 3.);
+    let b = spectral_response(n, 0., 2.);
+    vec3![r, g, 0]
 }
 
 pub struct Ray {
@@ -22,7 +21,7 @@ impl Ray {
         self.origin + self.direction * t
     }
 
-    pub fn render(&self, scene: &[Box<dyn RaytracedGeometry>]) -> u32 {
+    pub fn render(&self, scene: &[Box<dyn RaytracedGeometry>]) -> Vec3 {
         let mut min_normal = vec3![1];
         let mut dist = std::f32::INFINITY;
         let mut intersected_objects = 0;
@@ -37,14 +36,9 @@ impl Ray {
             }
         }
         if intersected_objects > 0 {
-            (vec3![
-                1. - dist.tanh(),
-                (1. - (dist / 2.).tanh()) * 0.4,
-                (1. - (dist / 3.).tanh()) * 0.3
-            ] + min_normal)
-                .to_color()
+            color_from_scaler(dist) * min_normal + vec3![min_normal[0]] * vec3![0, 0, 2]
         } else {
-            0
+            vec3![0]
         }
     }
 
@@ -76,11 +70,13 @@ impl<T: RaymarchedGeometry + Copy> RaytracedGeometry for FakeRaytrace<T> {
     fn intersects(&self, ray: &Ray, t_min: f32, t_max: f32) -> Option<Intersection> {
         let mut dist = t_max;
         let mut t = t_min;
-        let mut not_a_normal = 0.15;
+        let mut not_a_normal = 0.8;
+        let mut highlight = 0.5;
         while dist > 0.0005 {
             let d = self.0.distance(ray.at(t));
             if d > dist {
-                not_a_normal *= 0.8;
+                not_a_normal *= 0.7;
+                highlight *= 0.2;
             }
             if t > t_max {
                 return None;
@@ -92,7 +88,7 @@ impl<T: RaymarchedGeometry + Copy> RaytracedGeometry for FakeRaytrace<T> {
 
         Some(Intersection {
             point: ray.at(t),
-            normal: vec3![not_a_normal],
+            normal: vec3![not_a_normal, not_a_normal, highlight],
             t,
             is_front_facing: false,
         })

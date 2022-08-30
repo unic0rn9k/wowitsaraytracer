@@ -2,7 +2,7 @@ use std::mem::transmute;
 use std::ops::*;
 
 #[repr(C)]
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Vec3 {
     pub x: f32,
     pub y: f32,
@@ -43,7 +43,9 @@ impl Vec3 {
     }
 
     pub fn to_color(&self) -> u32 {
-        (self.z * 255.) as u32 + (((self.y * 255.) as u32) << 8) + (((self.x * 255.) as u32) << 16)
+        (self.z.max(0.).min(1.) * 255.) as u32
+            + (((self.y.max(0.).min(1.) * 255.) as u32) << 8)
+            + (((self.x.max(0.).min(1.) * 255.) as u32) << 16)
     }
 }
 
