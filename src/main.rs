@@ -3,6 +3,7 @@
 //!
 //! ## Screenshots
 //! ![](https://raw.githubusercontent.com/unic0rn9k/wowitsaraytracer/master/screenshot.jpeg)
+//! ![](https://raw.githubusercontent.com/unic0rn9k/wowitsaraytracer/master/mandelbulb.jpeg)
 
 use anyhow::*;
 use geometry::{Intersection, Ray, RaymarchedGeometry, RaytracedGeometry};
@@ -10,10 +11,11 @@ use minifb::{self, Key, Window, WindowOptions};
 
 const ASPECT_RATION: f32 = 16. / 19.;
 
-const WIDTH: usize = 800;
+const WIDTH: usize = 1000;
 const HEIGHT: usize = (WIDTH as f32 / ASPECT_RATION) as usize;
 
 mod vec3;
+use rand::{thread_rng, Rng};
 use vec3::Vec3;
 
 use crate::geometry::FakeRaytrace;
@@ -110,7 +112,7 @@ macro_rules! scene{
 }
 
 fn main() -> Result<()> {
-    let mut bulb = FakeRaytrace(MandelBulb(-20.));
+    let mut bulb = FakeRaytrace(MandelBulb(8.));
 
     let mut buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
 
@@ -134,10 +136,14 @@ fn main() -> Result<()> {
     let vertical = vec3![0, viewport_height, 0];
 
     let lower_left_corner = origin - horizontal / 2. - vertical / 2. - vec3![0, 0, focal_length];
+    let mut rng = thread_rng();
 
     while window.is_open() && !window.is_key_down(Key::Q) {
-        for y in 0..HEIGHT {
-            for x in 0..WIDTH {
+        for _ in 0..40 {
+            for _ in 0..100000 {
+                let x = rng.gen_range(0..WIDTH);
+                let y = rng.gen_range(0..HEIGHT);
+
                 let u = x as f32 / (WIDTH as f32 - 1.);
                 let v = (HEIGHT - y - 1) as f32 / (HEIGHT as f32 - 1.);
 
@@ -146,12 +152,9 @@ fn main() -> Result<()> {
 
                 buffer[x + y * WIDTH] = r.render(&scene![bulb]);
             }
+            window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap();
         }
-        println!("Iteration");
         bulb.0 .0 += 0.3;
-
-        // We unwrap here as we want this code to exit if it fails. Real applications may want to handle this in a different way
-        window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap();
     }
 
     Ok(())

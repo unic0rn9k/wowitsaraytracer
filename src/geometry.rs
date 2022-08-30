@@ -1,12 +1,15 @@
 use crate::*;
 
-fn color_from_scaler(mut scaler: f32) -> Vec3 {
-    let r = scaler % 100.;
-    scaler = scaler / 100.;
-    let g = scaler % 100.;
-    scaler = scaler / 100.;
-    let b = scaler % 100.;
-    vec3![r / 100., g / 100., b / 100.]
+fn spectral_response(n: f32, channel: f32, width: f32) -> f32 {
+    1. - ((n - channel) / width).powi(2)
+}
+
+fn color_from_scaler(n: f32) -> Vec3 {
+    let r = spectral_response(n, 1.5, 1.);
+    let g = spectral_response(n, 1.5, 1.5) * 0.25;
+    let b = spectral_response(n, 2., 2.) * 0.25;
+    //vec3![n.tanh() * 0.5, (n / 2.).tanh(), (n / 3.).tanh()] // * 0.1 + vec3![n]).unit_vector()
+    vec3![n]
 }
 
 pub struct Ray {
@@ -26,7 +29,7 @@ impl Ray {
 
         for obj in scene.iter() {
             if let Some(Intersection { normal, t, .. }) =
-                obj.intersects(self, 0., 4.) && t < dist
+                obj.intersects(self, 0., 2.) && t < dist
             {
                 intersected_objects += 1;
                 dist=t;
@@ -34,10 +37,15 @@ impl Ray {
             }
         }
         if intersected_objects > 0 {
-            return (vec3![min_normal.dot(&vec3![0.3, 0.4, 0.3]), 0, 0] + color_from_scaler(dist))
-                .to_color();
+            (vec3![
+                1. - dist.tanh(),
+                (1. - (dist / 2.).tanh()) * 0.4,
+                (1. - (dist / 3.).tanh()) * 0.3
+            ] + min_normal)
+                .to_color()
+        } else {
+            0
         }
-        0
     }
 
     pub fn new(origin: Vec3, direction: Vec3) -> Self {
@@ -68,20 +76,23 @@ impl<T: RaymarchedGeometry + Copy> RaytracedGeometry for FakeRaytrace<T> {
     fn intersects(&self, ray: &Ray, t_min: f32, t_max: f32) -> Option<Intersection> {
         let mut dist = t_max;
         let mut t = t_min;
-        while dist > 0.001 {
+        let mut not_a_normal = 0.15;
+        while dist > 0.0005 {
             let d = self.0.distance(ray.at(t));
-            //if d > dist || t > t_max {
-            //    return None;
-            //}
+            if d > dist {
+                not_a_normal *= 0.8;
+            }
             if t > t_max {
                 return None;
             }
+
             dist = d;
-            t += dist * 0.3;
+            t += dist * 0.4;
         }
+
         Some(Intersection {
             point: ray.at(t),
-            normal: vec3![0],
+            normal: vec3![not_a_normal],
             t,
             is_front_facing: false,
         })
