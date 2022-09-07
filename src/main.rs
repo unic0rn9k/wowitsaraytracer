@@ -1,6 +1,8 @@
 //! # a Wish Raytracer
 //! based on https://raytracing.github.io/books/RayTracingInOneWeekend.html
 //!
+//! The mandelbulb is actually ray marched, and i never really finished the raytracing part. So wish raymarcher might be more acurate.
+//!
 //! ## Screenshots
 //! ![](https://raw.githubusercontent.com/unic0rn9k/wowitsaraytracer/master/screenshot.jpeg)
 //! ![](https://raw.githubusercontent.com/unic0rn9k/wowitsaraytracer/master/mandelbulb.jpeg)
@@ -8,7 +10,7 @@
 
 use anyhow::*;
 use geometry::{Intersection, Ray, RaymarchedGeometry, RaytracedGeometry};
-use minifb::{self, Key, Window, WindowOptions};
+use minifb::{self, Key, MouseButton, MouseMode, Window, WindowOptions};
 
 const ASPECT_RATION: f32 = 1.;
 
@@ -120,58 +122,108 @@ fn main() -> Result<()> {
         WIDTH,
         HEIGHT,
         WindowOptions::default(),
-    )
-    .context("minifb was unable to crate window")?;
+    )?;
 
     // Limit to max ~60 fps update rate
     window.limit_update_rate(Some(std::time::Duration::from_micros(16600)));
 
     let viewport_height = 2.;
     let viewport_width = viewport_height * ASPECT_RATION;
-    let focal_length = 2.;
+    let mut focal_length = 2.;
 
-    let origin = vec3![0, 0.5, 3];
-    let horizontal = vec3![viewport_width, 0, 0];
-    let vertical = vec3![0, viewport_height, -1];
+    let mut origin = vec3![0, 0.5, 3];
+    let mut horizontal = vec3![viewport_width, 0, 0];
+    let mut vertical = vec3![0, viewport_height, -1];
 
-    let lower_left_corner = origin - horizontal / 2. - vertical / 2. - vec3![0, 0, focal_length];
+    let mut lower_left_corner =
+        origin - horizontal / 2. - vertical / 2. - vec3![0, 0, focal_length];
     let mut rng = thread_rng();
     let mut image_nr = 0;
 
+    let mut mouse_delta = [[0.; 2]; 2];
+    let mut img = image::RgbImage::new(WIDTH as u32, HEIGHT as u32);
+    let mut buffer_u32 = vec![0; WIDTH * HEIGHT];
+
     while window.is_open() && !window.is_key_down(Key::Q) {
-        let mut img = image::RgbImage::new(WIDTH as u32, HEIGHT as u32);
-        let mut buffer_u32 = vec![0; WIDTH * HEIGHT];
+        for _ in 0..2000 {
+            let x = rng.gen_range(0..WIDTH);
+            let y = rng.gen_range(0..HEIGHT);
 
-        for x in 0..WIDTH {
-            for y in 0..HEIGHT {
-                //let x = rng.gen_range(0..WIDTH);
-                //let y = rng.gen_range(0..HEIGHT);
+            let u = x as f32 / (WIDTH as f32 - 1.);
+            let v = (HEIGHT - y - 1) as f32 / (HEIGHT as f32 - 1.);
 
-                if buffer_u32[x + y * WIDTH] != 0 {
-                    continue;
-                };
+            let relative_dir = lower_left_corner + u * horizontal + v * vertical - origin;
+            let r = Ray::new(origin, relative_dir); //* (vec3![0] - origin));
 
-                let u = x as f32 / (WIDTH as f32 - 1.);
-                let v = (HEIGHT - y - 1) as f32 / (HEIGHT as f32 - 1.);
-
-                let relative_dir = lower_left_corner + u * horizontal + v * vertical - origin;
-                let r = Ray::new(origin, relative_dir); //* (vec3![0] - origin));
-
-                let pixel = r.render(&scene![bulb]);
-                buffer_u32[x + y * WIDTH] = pixel.to_color();
-                let mut tmp = [0; 3];
-                for n in 0..3 {
-                    tmp[n] = (pixel[n] * 255.) as u8
-                }
-                img.put_pixel(x as u32, y as u32, image::Rgb(tmp));
+            let pixel = r.render(&scene![bulb]);
+            buffer_u32[x + y * WIDTH] = pixel.to_color();
+            let mut tmp = [0; 3];
+            for n in 0..3 {
+                tmp[n] = (pixel[n] * 255.) as u8
             }
-            window
-                .update_with_buffer(&buffer_u32, WIDTH, HEIGHT)
-                .unwrap();
+            img.put_pixel(x as u32, y as u32, image::Rgb(tmp));
         }
-        img.save(&format!("images/image_{image_nr}.png"))?;
-        bulb.0 .0 += 2.;
-        image_nr += 1;
+        println!("Rendered chunk");
+        window.update_with_buffer(&buffer_u32, WIDTH, HEIGHT)?;
+
+        if let Some((x, y)) = window.get_mouse_pos(MouseMode::Discard) {
+            if window.get_mouse_down(MouseButton::Left) {
+                mouse_delta[0] = mouse_delta[1];
+                mouse_delta[1][0] = x;
+                mouse_delta[1][1] = y;
+                if mouse_delta[0]
+                    .iter()
+                    .zip(mouse_delta[1].iter())
+                    .map(|(a, b)| (a - b).abs())
+                    .sum::<f32>()
+                    < 5.
+                {
+                    buffer_u32 = vec![0; WIDTH * HEIGHT];
+                    println!("Moving camera...");
+                    horizontal.z += (mouse_delta[1][0] - mouse_delta[0][0]) * 0.5;
+                    vertical.z += (mouse_delta[1][1] - mouse_delta[0][1]) * 0.5;
+                }
+            }
+        }
+
+        if window.is_key_down(Key::Up) {
+            origin.z += 0.1;
+        }
+        if window.is_key_down(Key::Down) {
+            origin.z -= 0.1;
+        }
+        if window.is_key_down(Key::Left) {
+            origin.x += 0.1;
+        }
+        if window.is_key_down(Key::Right) {
+            origin.x -= 0.1;
+        }
+        if window.is_key_down(Key::J) {
+            origin.y -= 0.1;
+        }
+        if window.is_key_down(Key::K) {
+            origin.y += 0.1;
+        }
+        if window.is_key_down(Key::I) {
+            focal_length += 0.1;
+        }
+        if window.is_key_down(Key::O) {
+            focal_length -= 0.1;
+        }
+        lower_left_corner = origin - horizontal / 2. - vertical / 2. - vec3![0, 0, focal_length];
+
+        if window.is_key_pressed(Key::N, minifb::KeyRepeat::No) {
+            buffer_u32 = vec![0; WIDTH * HEIGHT];
+            println!("NEXT");
+            img.save(&format!("images/image_{image_nr}.png"))?;
+            bulb.0 .0 += 2.;
+            image_nr += 1;
+        }
+
+        if window.is_key_down(Key::R) {
+            horizontal = vec3![viewport_width, 0, 0];
+            vertical = vec3![0, viewport_height, -1];
+        }
     }
 
     Ok(())
