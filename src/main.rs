@@ -12,9 +12,9 @@ use anyhow::*;
 use geometry::{Intersection, Ray, RaymarchedGeometry, RaytracedGeometry};
 use minifb::{self, Key, MouseButton, MouseMode, Window, WindowOptions};
 
-const ASPECT_RATION: f32 = 1.;
+const ASPECT_RATION: f32 = 19. / 16.;
 
-const WIDTH: usize = 1000;
+const WIDTH: usize = 4000;
 const HEIGHT: usize = (WIDTH as f32 / ASPECT_RATION) as usize;
 
 mod vec3;
@@ -144,11 +144,10 @@ fn main() -> Result<()> {
     let mut img = image::RgbImage::new(WIDTH as u32, HEIGHT as u32);
     let mut buffer_u32 = vec![0; WIDTH * HEIGHT];
 
-    while window.is_open() && !window.is_key_down(Key::Q) {
-        for _ in 0..2000 {
-            let x = rng.gen_range(0..WIDTH);
-            let y = rng.gen_range(0..HEIGHT);
-
+    macro_rules! iterate {
+        ($x: expr, $y: expr) => {{
+            let x = $x;
+            let y = $y;
             let u = x as f32 / (WIDTH as f32 - 1.);
             let v = (HEIGHT - y - 1) as f32 / (HEIGHT as f32 - 1.);
 
@@ -162,8 +161,16 @@ fn main() -> Result<()> {
                 tmp[n] = (pixel[n] * 255.) as u8
             }
             img.put_pixel(x as u32, y as u32, image::Rgb(tmp));
+        }};
+    }
+
+    while window.is_open() && !window.is_key_down(Key::Q) {
+        for _ in 0..2000 {
+            let x = rng.gen_range(0..WIDTH);
+            let y = rng.gen_range(0..HEIGHT);
+
+            iterate!(x, y)
         }
-        println!("Rendered chunk");
         window.update_with_buffer(&buffer_u32, WIDTH, HEIGHT)?;
 
         if let Some((x, y)) = window.get_mouse_pos(MouseMode::Discard) {
@@ -179,13 +186,21 @@ fn main() -> Result<()> {
                     < 5.
                 {
                     buffer_u32 = vec![0; WIDTH * HEIGHT];
-                    println!("Moving camera...");
+                    img = image::RgbImage::new(WIDTH as u32, HEIGHT as u32);
                     horizontal.z += (mouse_delta[1][0] - mouse_delta[0][0]) * 0.5;
                     vertical.z += (mouse_delta[1][1] - mouse_delta[0][1]) * 0.5;
                 }
             }
         }
 
+        if window.is_key_down(Key::A) {
+            for x in 0..WIDTH {
+                for y in 0..HEIGHT {
+                    iterate!(x, y)
+                }
+                window.update_with_buffer(&buffer_u32, WIDTH, HEIGHT)?;
+            }
+        }
         if window.is_key_down(Key::Up) {
             origin.z += 0.1;
         }
@@ -214,10 +229,17 @@ fn main() -> Result<()> {
 
         if window.is_key_pressed(Key::N, minifb::KeyRepeat::No) {
             buffer_u32 = vec![0; WIDTH * HEIGHT];
-            println!("NEXT");
-            img.save(&format!("images/image_{image_nr}.png"))?;
+            img = image::RgbImage::new(WIDTH as u32, HEIGHT as u32);
             bulb.0 .0 += 2.;
             image_nr += 1;
+        }
+
+        if window.is_key_pressed(Key::B, minifb::KeyRepeat::No) {
+            println!("B");
+        }
+        if window.is_key_pressed(Key::S, minifb::KeyRepeat::No) {
+            println!("saving image nr{image_nr}...");
+            img.save(&format!("images/image_{image_nr}.jpeg"))?;
         }
 
         if window.is_key_down(Key::R) {

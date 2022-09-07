@@ -73,7 +73,7 @@ impl<T: RaymarchedGeometry + Copy> RaytracedGeometry for FakeRaytrace<T> {
         let mut t = t_min;
         let mut not_a_normal = 0.5;
         let mut highlight = 1.;
-        while dist > 0.0005 {
+        while dist > 0.0002 {
             let d = self.0.distance(ray.at(t));
             if d > dist {
                 not_a_normal *= 0.8;
@@ -84,7 +84,7 @@ impl<T: RaymarchedGeometry + Copy> RaytracedGeometry for FakeRaytrace<T> {
             }
 
             dist = d;
-            t += dist * 0.4;
+            t += dist * 0.2;
         }
 
         Some(Intersection {
